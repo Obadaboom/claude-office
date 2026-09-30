@@ -1,0 +1,104 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent|Task|mcp__.*|Read|Write|Edit|Bash|Grep|Glob|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|Task|mcp__.*|Read|Write|Edit|Bash|Grep|Glob|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__.*|Read|Write|Edit|Bash|Grep|Glob|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt|elicitation_dialog",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"<office>/hooks/agent-tracker.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

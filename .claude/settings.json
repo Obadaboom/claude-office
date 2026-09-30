@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://127.0.0.1:3334:*)",
+      "Bash(curl -s -X POST http://127.0.0.1:3334:*)",
+      "Bash(bash */scripts/start-office.sh:*)",
+      "Bash(bash */scripts/stop-office.sh:*)"
+    ]
+  }
+}

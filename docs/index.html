@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Office</title>
+<meta name="description" content="A pixel-art office for Claude Code. Each Claude Code session gets a person at a desk.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f3ec; --card: #fffdf8; --ink: #1f2328; --muted: #5d6166; --line: #ddd7ca;
+  --navy: #1f3b5c; --navy-ink: #ffffff; --code: #efeadf;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171b; --card: #1c2026; --ink: #e8e5de; --muted: #a3a7ad; --line: #2e333a;
+    --navy: #8fb2d9; --navy-ink: #10151b; --code: #232830;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 17px/1.6 Inter, system-ui, -apple-system, sans-serif;
+}
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 34px; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.01em; }
+h2 { font-size: 22px; line-height: 1.3; margin: 40px 0 8px; padding-top: 24px; border-top: 1px solid var(--line); }
+p, ul, ol { margin: 0 0 12px; }
+ul, ol { padding-left: 22px; }
+li { margin-bottom: 6px; }
+a { color: var(--navy); text-underline-offset: 2px; }
+code { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code); border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre code { background: none; padding: 0; }
+.lede { color: var(--muted); font-size: 18px; margin-bottom: 20px; }
+.shot { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); margin: 0 0 28px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 16px; margin-bottom: 24px; }
+.big { font-size: 24px; line-height: 1.3; font-weight: 700; margin: 0 0 12px; }
+.url { font-size: 18px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.or { color: var(--muted); font-size: 15px; margin-bottom: 8px; }
+#prompt { font-size: 13px; margin-bottom: 10px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px;
+  padding: 0 20px; border: 0; border-radius: 8px; background: var(--navy); color: var(--navy-ink);
+  font: 600 16px/1 Inter, system-ui, sans-serif; text-decoration: none; cursor: pointer;
+}
+.btn.ghost { background: transparent; color: var(--navy); border: 1px solid var(--navy); }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 16px; }
+.note { color: var(--muted); }
+.works { font-weight: 600; margin-top: 16px; }
+footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+@media (min-width: 900px) {
+  body { font-size: 18px; }
+  main { padding-top: 64px; }
+  h1 { font-size: 44px; }
+  .big { font-size: 30px; }
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Claude Office</h1>
+<p class="lede">A pixel-art office for Claude Code. Each Claude Code session gets a person at a desk. While it works, they type. When it needs you, they line up at the boss's door.</p>
+<img class="shot" src="images/office-demo.png" width="1056" height="683" alt="The office: pixel-art people at desks, one per Claude Code session.">
+
+<div class="step">
+<p class="big">Give Claude Code this link and say: set this up.</p>
+<p class="url"><a href="https://obadaboom.github.io/claude-office/">https://obadaboom.github.io/<wbr>claude-office/</a></p>
+</div>
+
+<p class="or">Or paste this:</p>
+<pre id="prompt">Set up the Claude Office from https://github.com/Obadaboom/claude-office. Clone it to ~/claude-office and follow its INSTALL.md. Show me any change to my Claude Code settings before you make it. Then start it and open it in my browser.</pre>
+<button class="btn ghost" id="copy" type="button">Copy</button>
+
+<p class="works">Works with any Claude Code model.</p>
+<p class="note">It adds to the Claude Code you already have. Claude follows <a href="https://github.com/Obadaboom/claude-office/blob/main/INSTALL.md">INSTALL.md</a>. It asks you before it touches your settings.</p>
+
+<h2>What you need</h2>
+<p>Claude Code. Claude checks and installs the rest (it asks first).</p>
+<p>Works on Mac and Linux. On Windows, use WSL.</p>
+
+<h2>What you'll see</h2>
+<ul>
+<li><strong>The demo first.</strong> A second office at http://localhost:3335 with made-up work. Type a task in the chat, like "Add a dark mode toggle". A pretend session builds it, gets reviewed, and waits for you at the door.
+<ul><li>Tapping an option on a note works in demo mode only. We left the real version out on purpose: the session would have to wait for your tap, and while it waits you can't type to it in the Claude app.</li></ul></li>
+<li><strong>Then your real office</strong> at http://localhost:3333. Start a new Claude Code session. A person at a desk starts working.</li>
+<li>Five things in the office open boards: the board on the wall (To-do), the TV (Shipping), the boss's desk (Decisions), the poster (Marketing) and the filing cabinet (Older).</li>
+<li>Click people, the coffee, the bell. Type <code>/the-office</code> in the chat to switch the theme.</li>
+</ul>
+
+<h2>Your own boards</h2>
+<p>The boards read plain markdown in <code>~/.agent-office/boards</code>. The first start puts three sample projects there. Your edits are never overwritten. The easy way to fill them: ask Claude, "add a task to my office board".</p>
+<p>Status <code>queued</code> or <code>building</code> = to do. <code>built</code> or <code>ready</code> = needs you. <code>done</code>, <code>live</code> or <code>shipped</code> = off the board.</p>
+<p>Anything older than 7 days moves to the filing cabinet. The file shapes are in the <a href="https://github.com/Obadaboom/claude-office#your-own-boards">README</a>.</p>
+
+<h2>Privacy</h2>
+<ul>
+<li>Everything stays on your computer. The office only listens on 127.0.0.1.</li>
+<li>The hook sends small events to it. Only these:
+<ul>
+<li>the event name and the session id</li>
+<li>the paths of the session's transcript files</li>
+<li>the name of a skill or MCP tool</li>
+<li>a file's name, never its path or its contents (like "reading App.tsx")</li>
+<li>a search pattern, up to 40 characters</li>
+<li>a command's description, up to 60 characters, never the command</li>
+<li>a subagent's type, its description up to 80 characters, and the first line of its answer up to 100 characters</li>
+</ul></li>
+<li>It never sends your prompts.</li>
+<li>The office reads your Claude Code session files on your computer to show titles and notes.</li>
+</ul>
+
+<h2>How to remove it</h2>
+<ol>
+<li>Stop the office (Ctrl+C where it runs).</li>
+<li>Take the hooks out of <code>~/.claude/settings.json</code>: delete the entries whose command ends in <code>agent-tracker.sh</code>. Or restore the backup the installer made next to it (<code>settings.json.backup.&lt;time&gt;</code>). Or ask Claude to do it.</li>
+<li>Delete <code>~/claude-office</code> and <code>~/.agent-office</code>.</li>
+</ol>
+
+<h2>Credit</h2>
+<p>Built on <a href="https://github.com/W17ant/Claude-Office">Claude-Office</a> by W17ANT, MIT license. The Dunder Mifflin theme and the cast come from there.</p>
+
+<h2>By hand</h2>
+<p>If you would rather not use Claude:</p>
+<div class="btns"><a class="btn ghost" href="https://github.com/Obadaboom/claude-office/archive/refs/heads/main.zip">Download ZIP</a></div>
+<p>Unzip it and rename the folder to <code>~/claude-office</code>. Then follow the steps below, from <code>cd ~/claude-office</code> on.</p>
+<p>Or with git clone:</p>
+<pre><code>git clone https://github.com/Obadaboom/claude-office ~/claude-office
+cd ~/claude-office
+npm ci
+npm run install-hooks      # adds the hook to ~/.claude/settings.json (makes a backup first)
+npm run demo               # demo: open http://localhost:3335/?theme=office
+npm run dev:all            # real office: open http://localhost:3333/?theme=office</code></pre>
+
+<footer>
+<div class="btns"><a class="btn" href="https://github.com/Obadaboom/claude-office">See the code on GitHub</a></div>
+</footer>
+</main>
+<script>
+const btn = document.getElementById('copy')
+btn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(document.getElementById('prompt').textContent)
+    btn.textContent = 'Copied'
+  } catch {
+    // No clipboard API, or it said no: select the text so the user can copy it.
+    const range = document.createRange()
+    range.selectNodeContents(document.getElementById('prompt'))
+    const sel = getSelection()
+    sel.removeAllRanges()
+    sel.addRange(range)
+    btn.textContent = 'Selected. Copy it now'
+  }
+  setTimeout(() => { btn.textContent = 'Copy' }, 3000)
+})
+</script>
+</body>
+</html>

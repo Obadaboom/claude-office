@@ -51,12 +51,14 @@ The file shapes:
 
 - Each project has `projects/<name>/STATUS.md` with a task table `| # | Task | Owner | Status |`. Status `queued` or `building` = to do. `built` or `ready` = needs you. `done`, `live` or `shipped` = off the board.
 - `LOG.md`: one line per event, `- 2026-10-01 09:40 — Nimbus Notes: dark mode LIVE`. LIVE, SHIPPED, DONE or merged puts it on the Shipping board.
-- `DECISIONS.md`: open questions, `- [ ] 2026-10-01 — **Pick the launch day** Friday or Monday.`
+- `DECISIONS.md`: open questions, `- [ ] 2026-10-01 — **Pick the launch day** Friday or Monday.` Put an indented `  - In short: Pick Friday or Monday for the launch.` line under one, and the desk shows that line when you open it.
 - `MARKETING.md`: a `## Marketing now` table `| # | Item | Now |`. Now starts with needs, running, posted or stopped.
 
 Every table needs its header row and a `|---|` line right under it, like the PROJECTS.md example.
 
 Anything older than 7 days moves to the filing cabinet.
+
+Plain sentences are optional and off by default. Turn them on and Claude Haiku writes one short everyday sentence for each item, shown when you open it. It uses a little of your Claude plan: each line goes to Claude once, then the sentence is kept in `~/.agent-office/plain-cache.json`. To turn them on, start the office with `AGENT_OFFICE_PLAIN=1 npm run dev:all`. The demo office never uses them.
 
 ## Privacy
 
@@ -71,6 +73,7 @@ Anything older than 7 days moves to the filing cabinet.
   - a subagent's type, its description up to 80 characters, and the first line of its answer up to 100 characters
 - It never sends your prompts.
 - The office reads your Claude Code session files on your computer to show titles and notes.
+- Plain sentences are off by default. If you turn them on, your board lines go to Claude through your own `claude` command.
 
 ## How to remove it
 

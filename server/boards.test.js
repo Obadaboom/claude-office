@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { mkdtempSync, writeFileSync, mkdirSync, appendFileSync, readFileSync } from 'fs'
+import { mkdtempSync, writeFileSync, mkdirSync, appendFileSync, readFileSync, chmodSync, existsSync } from 'fs'
 import { spawn } from 'child_process'
 import { request } from 'http'
 import WebSocket from 'ws'
@@ -303,6 +303,21 @@ describe('boards from files', () => {
     expect(d[1].short).toBe('Three small things')
   })
 
+  it('expanded text = the plain "In short:" sub-bullet when there is one', () => {
+    const d = parseDecisions([
+      '- [ ] 2026-09-30 — **Move the launch?** Store review is slow, `release/2.1` waits on row 4.',
+      '  - Context: the review queue.',
+      '  - in short: The launch may slip a **week**; pick a new day. ',
+      '- [ ] 2026-09-29 — **Ship it?** Config only.',
+      '  - Context: no plain line.',
+      '',
+      '  - In short: belongs to nobody.',
+    ].join('\n'))
+    expect(d[0]).toMatchObject({ date: '2026-09-30', title: 'Move the launch?', text: 'The launch may slip a week; pick a new day.', plain: 'The launch may slip a week; pick a new day.', short: 'Move the launch?' })
+    expect(d[1]).toMatchObject({ title: 'Ship it?', text: 'Ship it? Config only.' })
+    expect(d[1]).not.toHaveProperty('plain')
+  })
+
   it('missing files → empty lists', () => {
     const none = join(dir, 'nope')
     expect(statusBoard(none)).toEqual([])
@@ -323,10 +338,11 @@ const get = (path, headers = {}) => new Promise((res, rej) => {
   }).on('error', rej).end()
 })
 
-/** boardsDir undefined = the default ~/.agent-office/boards under `home` */
-function startServer(boardsDir, home = mkdtempSync(join(tmpdir(), 'office-srv-'))) {
-  const env = { ...process.env, HOME: home, AGENT_OFFICE_PORT: String(PORT), AGENT_OFFICE_BOARDS_DIR: boardsDir }
+/** boardsDir undefined = the default ~/.agent-office/boards under `home`; plain sentences off unless `extra` turns them on */
+function startServer(boardsDir, home = mkdtempSync(join(tmpdir(), 'office-srv-')), extra = {}) {
+  const env = { ...process.env, HOME: home, AGENT_OFFICE_PORT: String(PORT), AGENT_OFFICE_BOARDS_DIR: boardsDir, ...extra }
   if (!boardsDir) delete env.AGENT_OFFICE_BOARDS_DIR
+  if (!extra.AGENT_OFFICE_PLAIN) delete env.AGENT_OFFICE_PLAIN
   return spawn('node', [join(ROOT, 'server/index.js')], { env, stdio: 'ignore' })
 }
 const stop = srv => new Promise(r => { srv.on('exit', r); srv.kill() })
@@ -429,4 +445,57 @@ describe('server default boards dir', () => {
     expect(nimbus.rows.map(r => r.name)).toContain('My own task')
     await stop(srv)
   }, 15000)
+})
+
+/** `claude` stub: notes each call in `<dir>/called`, answers `Plain <id>` per item */
+function claudeStub() {
+  const dir = mkdtempSync(join(tmpdir(), 'office-claude-'))
+  const stub = join(dir, 'claude')
+  writeFileSync(stub, `#!/bin/sh\necho x >> "${join(dir, 'called')}"\nexec node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const o={};for(const k in JSON.parse(s))o[k]="Plain "+k;console.log(JSON.stringify(o))})'\n`)
+  chmodSync(stub, 0o755)
+  return { stub, called: () => existsSync(join(dir, 'called')) }
+}
+const host = { host: `localhost:${PORT}` }
+const board = async b => JSON.parse((await get(`/boards/${b}`, host)).body)
+
+describe('server plain sentences: off by default', () => {
+  const claude = claudeStub()
+  let srv
+  beforeAll(async () => { srv = startServer(fixture(), undefined, { AGENT_OFFICE_CLAUDE_CMD: claude.stub }); await waitUp() })
+  afterAll(() => stop(srv))
+
+  it('never calls claude; no plain field anywhere', async () => {
+    await sleep(2500) // past the 2 s debounce
+    expect(claude.called()).toBe(false)
+    const all = await Promise.all(['status', 'log', 'decisions', 'marketing'].map(board))
+    expect(JSON.stringify(all)).not.toMatch(/"plain/)
+  }, 10000)
+})
+
+describe('server plain sentences: AGENT_OFFICE_PLAIN=1', () => {
+  const claude = claudeStub()
+  const home = mkdtempSync(join(tmpdir(), 'office-srv-'))
+  const msgs = []
+  let srv
+  beforeAll(async () => {
+    srv = startServer(fixture(), home, { AGENT_OFFICE_PLAIN: '1', AGENT_OFFICE_CLAUDE_CMD: claude.stub })
+    await waitUp()
+    const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`)
+    ws.on('message', d => { const m = JSON.parse(d.toString()); if (m.type === 'boards_changed') msgs.push(m.board) })
+  })
+  afterAll(() => stop(srv))
+
+  it('backfills at startup without a board open, caches under ~/.agent-office, then nudges every board', async () => {
+    await sleep(3000) // 2 s debounce + the stub call
+    expect(claude.called()).toBe(true)
+    const rows = (await board('status')).flatMap(p => p.rows)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const r of rows) expect(r.plain).toMatch(/^Plain \d+$/)
+    const log = await board('log')
+    expect(log.filter(l => l.kind === 'shipped').every(l => l.plain)).toBe(true)
+    expect(log.filter(l => l.kind !== 'shipped').some(l => l.plain)).toBe(false)
+    expect((await board('decisions')).every(d => d.plain)).toBe(true)
+    expect(existsSync(join(home, '.agent-office', 'plain-cache.json'))).toBe(true)
+    expect(msgs).toEqual(expect.arrayContaining(['status', 'log', 'decisions', 'marketing']))
+  }, 10000)
 })

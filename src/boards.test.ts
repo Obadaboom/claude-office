@@ -258,3 +258,26 @@ describe('newest first, old to the cabinet (2l)', () => {
     expect(boardView('older', [[], [], [], []], NOW)).toEqual([])
   })
 })
+
+describe('plain sentences', () => {
+  const p = (rows: object[], extra = {}) => [{ slug: 'x', name: 'X', rows, notes: ['raw note'], shortNotes: ['note'], noteDates: ['2026-09-29'], ...extra }]
+
+  it('an opened row, note, LOG line, decision or marketing item shows its plain sentence; keys and first-view text stay', () => {
+    const [ready] = boardView('shipping', [p([{ ...row('3', 'waiting'), plain: 'Pickup times can be picked.' }]), []], NOW)
+    expect(ready.lines[0]).toEqual({ key: 'ready:x:3', text: 'X · Row 3 name', detail: 'Pickup times can be picked.' })
+    const trail = [{ ...p([])[0], slug: 'trailhead-maps', plainNotes: ['The app is live.'] }]
+    expect(boardView('status', [trail, []], NOW)[0].lines[0].children).toEqual([{ key: 'trailhead-maps:note:0', text: 'note', detail: 'The app is live.' }])
+    const log = [{ date: '2026-09-30', time: '09:00', text: 'X row 3 LIVE `a.ts`', short: 'X LIVE', kind: 'shipped', plain: 'Pickup times are live.' }]
+    expect(boardView('shipping', [[], log], NOW)[0].lines[0]).toEqual({ key: '2026-09-30 09:00 · X row 3 LIVE `a.ts`', text: 'X LIVE', detail: '2026-09-30 09:00 · Pickup times are live.' })
+    const dec = [{ date: '2026-09-29', title: 'A?', text: 'Pick A.', short: 'A?', plain: 'Pick A.' }]
+    expect(boardView('decisions', [dec], NOW)[0].lines[0].detail).toBe('2026-09-29 · Pick A.')
+    const mkt = [{ n: '1', name: 'Ad', now: 'needs you · go', state: 'needs', date: '2026-09-29', short: 'Ad', plain: 'Say go to post the ad.' }]
+    expect(boardView('marketing', [mkt], NOW)[0].lines[0].detail).toBe('Say go to post the ad.')
+  })
+
+  it('no sentence (null or missing) → today\'s detail', () => {
+    const trail = [{ ...p([])[0], slug: 'trailhead-maps', plainNotes: [null] }]
+    expect(boardView('status', [trail, []], NOW)[0].lines[0].children![0].detail).toBe('raw note')
+    expect(boardView('shipping', [p([row('3', 'open')]), []], NOW)[0].lines[0].detail).toBe('#3 · Row 3 name: full text of 3 — status 3')
+  })
+})

@@ -26,10 +26,12 @@ const BY_FURNITURE: Record<string, BoardId> = {
 
 export const boardFor = (furnitureId: string): BoardId | null => BY_FURNITURE[furnitureId] ?? null
 
-type Row = { n: string; name: string; text: string; status: string; state: string; date?: string }
-type Project = { slug: string; name: string; rows: Row[]; notes: string[]; shortNotes: string[]; noteDates?: string[] }
-type Dated = { date?: string; time?: string; text: string; short: string; kind?: string }
-type Item = { n: string; name: string; now: string; state: string; date: string; short: string }
+/** `plain` = one plain sentence from the server (a decision's `In short:` line, or AGENT_OFFICE_PLAIN=1);
+ * an opened item shows it when present, else the raw detail. */
+type Row = { n: string; name: string; text: string; status: string; state: string; date?: string; plain?: string }
+type Project = { slug: string; name: string; rows: Row[]; notes: string[]; shortNotes: string[]; noteDates?: string[]; plainNotes?: (string | null)[] }
+type Dated = { date?: string; time?: string; text: string; short: string; kind?: string; plain?: string }
+type Item = { n: string; name: string; now: string; state: string; date: string; short: string; plain?: string }
 
 /** Anything whose latest date is older than this many days (or has no date) moves to the Older board. */
 export const OLD_DAYS = 7
@@ -58,14 +60,14 @@ const clip = (s: string) => {
 }
 
 const rowLine = (p: Project, r: Row, prefix = ''): Line =>
-  ({ key: `${prefix}${p.slug}:${r.n}`, text: prefix ? clip(`${p.name} · ${r.name}`) : r.name, detail: `#${r.n} · ${r.text} — ${r.status}` })
+  ({ key: `${prefix}${p.slug}:${r.n}`, text: prefix ? clip(`${p.name} · ${r.name}`) : r.name, detail: r.plain ?? `#${r.n} · ${r.text} — ${r.status}` })
 const noteLine = (p: Project, i: number, prefix = ''): Line =>
-  ({ key: `${prefix}${p.slug}:note:${i}`, text: prefix ? clip(`${p.name} · ${p.shortNotes[i]}`) : p.shortNotes[i], detail: p.notes[i] })
-const itemLine = (i: Item, key: string): Line => ({ key: `${key}:${i.n}`, text: i.short, detail: `${i.name} · ${i.now}` })
+  ({ key: `${prefix}${p.slug}:note:${i}`, text: prefix ? clip(`${p.name} · ${p.shortNotes[i]}`) : p.shortNotes[i], detail: p.plainNotes?.[i] ?? p.notes[i] })
+const itemLine = (i: Item, key: string): Line => ({ key: `${key}:${i.n}`, text: i.short, detail: i.plain ?? `${i.name} · ${i.now}` })
 
 const dated = (items: Dated[], key: string): Line[] => cap(items.map(i => {
-  const detail = `${i.date}${i.time ? ` ${i.time}` : ''} · ${i.text}`
-  return { key: detail, text: i.short, detail }
+  const when = `${i.date}${i.time ? ` ${i.time}` : ''}`
+  return { key: `${when} · ${i.text}`, text: i.short, detail: `${when} · ${i.plain ?? i.text}` } // key = the raw line: stable while a sentence arrives
 }), key)
 
 type PR = { p: Project; r: Row; date?: string }

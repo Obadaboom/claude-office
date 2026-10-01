@@ -2,12 +2,14 @@
  * Boards — read-only views of the markdown in ~/.agent-office/boards for the office.
  * GET /boards/status | /boards/log | /boards/decisions | /boards/marketing, plus a
  * `boards_changed` WS nudge when the files change. Reads PROJECTS.md, projects/<slug>/STATUS.md,
- * LOG.md, DECISIONS.md and MARKETING.md only; never writes.
+ * LOG.md, DECISIONS.md and MARKETING.md only; never writes. With AGENT_OFFICE_PLAIN=1 each shown item
+ * also gets a `plain` sentence (server/plain.js).
  */
 
 import { readFileSync, watch } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
+import { plainer, plainOn } from './plain.js'
 
 export const boardsDir = () => process.env.AGENT_OFFICE_BOARDS_DIR || join(homedir(), '.agent-office', 'boards')
 const read = file => { try { return readFileSync(file, 'utf8') } catch { return '' } }
@@ -135,12 +137,16 @@ export function parseLog(md, projects = []) {
   return out
 }
 
+/** Open `- [ ]` items. An indented `  - In short: <sentence>` under one is its opened text (and its `plain`). */
 export function parseDecisions(md) {
-  return md.split('\n').flatMap(line => {
+  const lines = md.split('\n')
+  return lines.flatMap((line, i) => {
     const m = line.match(/^- \[ \] (\d{4}-\d{2}-\d{2})\s*(?:[—–-]\s+)?(.*)$/)
     if (!m) return []
     const title = m[2].match(/\*\*(.+?)\*\*/)?.[1] ?? ''
-    return [{ date: m[1], title, text: cut(m[2], 200), short: short(title || lead(plain(m[2]))) }]
+    let inShort // `  - In short: …` among the item's indented sub-bullets
+    for (let j = i + 1; /^\s/.test(lines[j] ?? ''); j++) inShort ??= lines[j].match(/^\s+- in short:\s*(.+)/i)?.[1]
+    return [{ date: m[1], title, text: inShort ? plain(inShort) : cut(m[2], 200), short: short(title || lead(plain(m[2]))), ...(inShort && { plain: plain(inShort) }) }]
   })
 }
 
@@ -195,11 +201,34 @@ export function loopbackOnly(req, res, next) {
   res.status(403).json({ error: 'Forbidden host' })
 }
 
+/** Each board's JSON as today. */
+export const BOARDS = {
+  status: dir => statusBoard(dir),
+  log: dir => parseLog(read(join(dir, 'LOG.md')), statusBoard(dir)),
+  decisions: dir => parseDecisions(read(join(dir, 'DECISIONS.md'))),
+  marketing: dir => parseMarketing(read(join(dir, MARKETING))),
+}
+
+/** The same JSON with `plain` on every item a board shows: say(raw) = the cached sentence, or undefined (raw queued).
+ * raw = what the opened item showed before; LOG lines only when shipped, the only kind a board shows. */
+export const PLAIN = {
+  status: (ps, say) => ps.map(p => ({
+    ...p, rows: p.rows.map(r => ({ ...r, plain: say(`${p.name}: ${r.text} — ${r.status}`) })), plainNotes: p.notes.map(n => say(`${p.name}: ${n}`) ?? null),
+  })),
+  log: (ls, say) => ls.map(l => (l.kind === 'shipped' ? { ...l, plain: say(l.text) } : l)),
+  decisions: (ds, say) => ds.map(d => ({ ...d, plain: d.plain ?? say(d.text) })),
+  marketing: (is, say) => is.map(i => ({ ...i, plain: say(`${i.name} · ${i.now}`) })),
+}
+
 export function mountBoards(app, broadcast) {
+  const nudgeAll = () => Object.keys(BOARDS).forEach(board => broadcast({ type: 'boards_changed', board }))
+  const say = plainOn() ? plainer({ onBatch: nudgeAll }) : null // off: no `claude` call, boards as before
+  const view = board => (say ? PLAIN[board](BOARDS[board](boardsDir()), say) : BOARDS[board](boardsDir()))
   app.use('/boards', loopbackOnly)
-  app.get('/boards/status', (_req, res) => res.json(statusBoard(boardsDir())))
-  app.get('/boards/log', (_req, res) => res.json(parseLog(read(join(boardsDir(), 'LOG.md')), statusBoard(boardsDir()))))
-  app.get('/boards/decisions', (_req, res) => res.json(parseDecisions(read(join(boardsDir(), 'DECISIONS.md')))))
-  app.get('/boards/marketing', (_req, res) => res.json(parseMarketing(read(join(boardsDir(), MARKETING)))))
-  watchBoards(boardsDir(), broadcast)
+  for (const board of Object.keys(BOARDS)) {
+    app.get(`/boards/${board}`, (_req, res) => res.json(view(board)))
+    if (say) view(board) // queue the backfill now, not on the first open
+  }
+  // a changed file queues its new texts even with no board open
+  watchBoards(boardsDir(), msg => { broadcast(msg); if (say) view(msg.board) })
 }
